@@ -4,7 +4,8 @@ from numpy.testing import assert_almost_equal, assert_array_almost_equal
 import pytest
 
 from acoustics.room import (mean_alpha, nrc, t60_sabine, t60_eyring, t60_millington, t60_fitzroy, t60_arau, t60_impulse,
-                            c50_from_file, c80_from_file)
+                            c50_from_file, c80_from_file, d50_from_file, d80_from_file, centre_time, st_early_from_file,
+                            st_late_from_file, st_total_from_file)
 from acoustics.bands import octave, third
 
 import sys
@@ -186,6 +187,64 @@ def test_c50_from_file(file_name, bands, expected):
 def test_c80_from_file(file_name, bands, expected):
     calculated = c80_from_file(file_name, bands)
     assert_array_almost_equal(calculated, expected, decimal=0)
+
+
+@pytest.mark.parametrize("file_name, bands, expected", [
+    (data_path() + 'living_room_1.wav', octave(63, 8000),
+     np.array([0.85, 0.98, 1., 1., 1., 1., 1., 1.]),
+    (data_path() + 'living_room_1.wav', third(100, 5000),
+     np.array([0.64, 0.8 , 0.83, 0.95, 0.98, 0.99, 0.99, 0.99, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])),
+])
+def test_d50_from_file(file_name, bands, expected):
+    calculated = d50_from_file(file_name, bands)
+    assert_array_almost_equal(calculated, expected, decimal=2)
+
+
+@pytest.mark.parametrize("file_name, bands, expected", [
+    (data_path() + 'living_room_1.wav', octave(63, 8000),
+     np.array([0.98, 0.99, 1., 1., 1., 1., 1., 1.]),
+    (data_path() + 'living_room_1.wav', third(100, 5000),
+     np.array([0.98, 0.96, 0.98, 1., 1., 1., 0.99, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])),
+])
+def test_d80_from_file(file_name, bands, expected):
+    calculated = d80_from_file(file_name, bands)
+    assert_array_almost_equal(calculated, expected, decimal=2)
+
+
+@pytest.mark.parametrize("file_name, bands, expected", [
+    (data_path() + 'living_room_1.wav', octave(63, 8000),
+     np.array([17.79, 3.8 , -10.53, -18.21, -22.58, -25.79, -17.85, -19.32]),
+    (data_path() + 'living_room_1.wav', third(100, 5000),
+     np.array([39.91, 33.59, 21.14, 20.95, 9.74, 1.39, -5.21, -6.08, -16.4, -22.86, -20.7, -17.53,
+               -25.3, -26.28, -24.3, -18.24, -18., -16.87])),
+])
+def test_st_early_from_file(file_name, bands, expected):
+    calculated = st_early_from_file(file_name, bands)
+    assert_array_almost_equal(calculated, expected, decimal=2)
+
+
+@pytest.mark.parametrize("file_name, bands, expected", [
+    (data_path() + 'living_room_1.wav', octave(63, 8000),
+     np.array([-0.56, -16.95, -28.54, -35.46, -39.5 , -39.99, -36.82, -39.63]),
+    (data_path() + 'living_room_1.wav', third(100, 5000),
+     np.array([19.69, 15.1 , -0.83, -3.37, -15.75, -19.6, -22.88, -26.83, -36.9, -38.36, -39.08,
+               -36.82, -40.55, -42.07, -37.02, -37.57, -38.8, -35.19])),
+])
+def test_st_late_from_file(file_name, bands, expected):
+    calculated = st_late_from_file(file_name, bands)
+    assert_array_almost_equal(calculated, expected, decimal=3)
+
+
+@pytest.mark.parametrize("file_name, bands, expected", [
+    (data_path() + 'living_room_1.wav', octave(63, 8000),
+     np.array([17.85, 3.84, -10.46, -18.13, -22.49, -25.62, -17.79, -19.28]),
+    (data_path() + 'living_room_1.wav', third(100, 5000),
+     np.array([39.95, 33.65, 21.17, 20.96, 9.75, 1.42, -5.13, -6.04, -16.36, -22.74, -20.63,
+               -17.48, -25.17, -26.17, -24.07, -18.19, -17.96, -16.8])),
+])
+def test_st_total_from_file(file_name, bands, expected):
+    calculated = st_total_from_file(file_name, bands)
+    assert_array_almost_equal(calculated, expected, decimal=3)
 
 
 def teardown_module(room):

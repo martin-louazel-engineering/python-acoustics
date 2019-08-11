@@ -274,3 +274,174 @@ def c80_from_file(file_name, bands=None):
     """
     fs, signal = wavfile.read(file_name)
     return clarity(80.0, signal, fs, bands)
+
+
+def definition(time, signal, fs, bands=None):
+    """
+    Definition :math:`D_i` determined from an impulse response.
+
+    :param time: Time in miliseconds (e.g.: 50, 80).
+    :param signal: Impulse response.
+    :type signal: :class:`np.ndarray`
+    :param fs: Sample frequency.
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+
+    """
+    band_type = _check_band_type(bands)
+
+    if band_type == 'octave':
+        low = octave_low(bands[0], bands[-1])
+        high = octave_high(bands[0], bands[-1])
+    elif band_type == 'third':
+        low = third_low(bands[0], bands[-1])
+        high = third_high(bands[0], bands[-1])
+
+    d = np.zeros(bands.size)
+    for band in range(bands.size):
+        filtered_signal = bandpass(signal, low[band], high[band], fs, order=8)
+        h2 = filtered_signal**2.0
+        t = int((time / 1000.0) * fs + 1)
+        d[band] = (np.sum(h2[:t]) / np.sum(h2))
+    return d
+
+
+def d50_from_file(file_name, bands=None):
+    """
+    Definition for 50 miliseconds :math:`D_{50}` from a file.
+
+    :param file_name: File name (only WAV is supported).
+    :type file_name: :class:`str`
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+
+    """
+    fs, signal = wavfile.read(file_name)
+    return definition(50.0, signal, fs, bands)
+
+
+def d80_from_file(file_name, bands=None):
+    """
+    Definition for 80 miliseconds :math:`D_{80}` from a file.
+
+    :param file_name: File name (only WAV is supported).
+    :type file_name: :class:`str`
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+
+    """
+    fs, signal = wavfile.read(file_name)
+    return definition(80.0, signal, fs, bands)
+
+
+def centre_time(signal, fs, bands=None):
+    """
+    Centre time :math:`T_{s}` determined from an impulse response.
+
+    :param signal: Impulse response.
+    :type signal: :class:`np.ndarray`
+    :param fs: Sample frequency.
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+
+    """
+    band_type = _check_band_type(bands)
+
+    if band_type == 'octave':
+        low = octave_low(bands[0], bands[-1])
+        high = octave_high(bands[0], bands[-1])
+    elif band_type == 'third':
+        low = third_low(bands[0], bands[-1])
+        high = third_high(bands[0], bands[-1])
+
+    t = np.asarray([i/fs for i in range(len(signal))])
+    ts = np.zeros(bands.size)
+    for band in range(bands.size):
+        filtered_signal = bandpass(signal, low[band], high[band], fs, order=8)
+        h2 = filtered_signal**2.0
+        ts[band] = (np.sum(np.multiply(t, h2)) / np.sum(h2))
+    return ts
+
+
+def support(signal, fs, bands=None, st_type='total'):
+    """
+    Support stage measurement :math:`ST_i` determined from an impulse response.
+
+    :param signal: Impulse response.
+    :type signal: :class:`np.ndarray`
+    :param fs: Sample frequency.
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+    :param st_type: Type of support to be calculated. It accepts 'early', 'late' and 'total'
+
+    """
+    band_type = _check_band_type(bands)
+
+    if band_type == 'octave':
+        low = octave_low(bands[0], bands[-1])
+        high = octave_high(bands[0], bands[-1])
+    elif band_type == 'third':
+        low = third_low(bands[0], bands[-1])
+        high = third_high(bands[0], bands[-1])
+
+    # Define integration time
+    st_type = st_type.lower()
+    if st_type == 'early':
+        t1 = int(0.020 * fs + 1)
+        t2 = int(0.100 * fs + 1)
+    elif st_type == 'late':
+        t1 = int(0.100 * fs + 1)
+        t2 = int(1.000 * fs + 1)
+    elif st_type == 'total':
+        t1 = int(0.020 * fs + 1)
+        t2 = int(1.000 * fs + 1)
+    t3 = int(0.010 * fs + 1)
+
+    st = np.zeros(bands.size)
+    for band in range(bands.size):
+        filtered_signal = bandpass(signal, low[band], high[band], fs, order=8)
+        h2 = filtered_signal**2.0
+        st[band] = 10.0 * np.log10((np.sum(h2[t1:t2]) / np.sum(h2[:t3])))
+    return st
+
+
+def st_early_from_file(file_name, bands=None):
+    """
+    Early support :math:`ST_{Early}` from a file.
+
+    :param file_name: File name (only WAV is supported).
+    :type file_name: :class:`str`
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+
+    """
+    fs, signal = wavfile.read(file_name)
+    return support(signal, fs, bands, st_type='early')
+
+
+def st_late_from_file(file_name, bands=None):
+    """
+    Late support :math:`ST_{Late}` from a file.
+
+    :param file_name: File name (only WAV is supported).
+    :type file_name: :class:`str`
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+
+    """
+    fs, signal = wavfile.read(file_name)
+    return support(signal, fs, bands, st_type='late')
+
+
+def st_total_from_file(file_name, bands=None):
+    """
+    Total support :math:`ST_{Total}` from a file.
+
+    :param file_name: File name (only WAV is supported).
+    :type file_name: :class:`str`
+    :param bands: Bands of calculation (optional). Only support standard octave and third-octave bands.
+    :type bands: :class:`np.ndarray`
+
+    """
+    fs, signal = wavfile.read(file_name)
+    return support(signal, fs, bands, st_type='total')
